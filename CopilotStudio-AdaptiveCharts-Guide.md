@@ -1,5 +1,32 @@
 # Copilot Studio + Adaptive Cards Charts Build Guide
 
+## Purpose of this guide
+
+This guide shows a reusable pattern for taking structured JSON data in Copilot Studio, normalizing it, and rendering it as Adaptive Card charts.
+
+The goal is not to build a chart flow that only works for one bot or one domain. The goal is to establish a repeatable approach that can work for almost any dataset, as long as the source data can be represented as JSON.
+
+The examples in this guide use a music scenario, such as songs released by genre, because it is easy to understand and visualize. That scenario is only an example. The same pattern can be reused for sales data, support metrics, inventory counts, project tracking, financial summaries, operational dashboards, or any other structured dataset.
+
+At a high level, the pattern does three things:
+
+1. Accept a selected dataset from an orchestrator or parent agent.
+2. Normalize that dataset into a chart-ready JSON contract.
+3. Render the appropriate Adaptive Card chart based on the normalized shape.
+
+Use this guide as a template for building a generic JSON-to-chart flow in Copilot Studio, with the music example serving as a concrete reference implementation.
+
+### Why this guide uses two topics
+
+This example uses two topics on purpose:
+
+- **Prepare Chart Data** handles normalization and shaping
+- **Render Chart** handles presentation and Adaptive Card output
+
+That split is primarily about **separation of concerns**: one topic is responsible for preparing and normalizing data, while the other is responsible for presentation and rendering. It also makes the pattern easier to reuse across multiple agents, datasets, or chart scenarios, and it makes debugging easier because you can inspect the normalized chart payload before rendering.
+
+A single-topic implementation is also valid for simpler solutions. The two-topic structure shown here is a reusable design pattern, not a hard requirement.
+
 ## 1. Topic flow diagram
 
 This diagram shows only nodes that live inside the two Copilot Studio topics.
