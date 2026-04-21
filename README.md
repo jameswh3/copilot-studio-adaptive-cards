@@ -7,7 +7,6 @@ The included guide uses a music dataset as the example scenario, but the pattern
 ## Contents
 
 - [CopilotStudio-AdaptiveCharts-Guide.md](CopilotStudio-AdaptiveCharts-Guide.md) - step-by-step guide for the topic pattern
-- [Reference/](Reference/) - sample chart payloads and supporting reference material
 
 ## Goal
 
