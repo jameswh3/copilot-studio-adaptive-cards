@@ -94,7 +94,7 @@ Create the second topic with these properties:
 | Name | Render Chart |
 | Description | Renders Adaptive Card charts from a normalized chart plan passed in by the orchestrator. |
 | Model display name | Render Chart |
-| Model description | Use this topic when a dataset has already been selected and normalized for charting. The topic accepts a chart plan JSON payload and returns an Adaptive Card chart such as bar, pie, line, grouped, stacked, or gauge. Do not use this topic to fetch data. |
+| Model description | Use this topic when a dataset has already been selected and normalized for charting. The topic accepts a chart plan JSON payload and returns an Adaptive Card chart such as bar, pie, line, grouped, or stacked charts. Do not use this topic to fetch data. |
 | Ask the user before running this tool | Off |
 
 Add this topic input:
@@ -267,13 +267,15 @@ The resulting value stored in `Topic.ChartPlanJSON` is the normalized contract u
 
 Add a **Redirect** node as the final step in this topic.
 
+Important: add this redirect in the Copilot Studio canvas UI after pasting the YAML. Cross-topic redirect references can break when copied in raw YAML between environments, causing errors such as "Selected topic is no longer available". If you are using the YAML directly, do not rely on the pasted redirect reference alone; reselect the destination topic manually in the UI.
+
 Map the redirect input explicitly as follows:
 
 | Target topic input | Value to pass from this topic |
 |---|---|
 | `Chart Plan JSON` / `ChartPlanJSON` | `Topic.ChartPlanJSON` |
 
-If the UI shows `ChartPlanJSON = ChartPlanJSON` inside **Prepare Chart Data**, that is usually correct: the left side is the **target topic input** and the right side is the **current topic variable** being passed into it.
+In the canvas UI, this often appears as `ChartPlanJSON = ChartPlanJSON`.
 
 Do **not** pass `Topic.SelectedDatasetJSON` directly into the Render Chart topic.
 
@@ -385,7 +387,6 @@ The orchestrator should send the normalized chart plan contract used in this gui
 - If `chartType` is `horizontalBar`, the render topic will also read `normalizedRows`
 - If `chartType` is `line`, `verticalBarGrouped`, or `verticalBarStacked`, the render topic will read `data`
 - If `chartType` is `horizontalBarStacked`, the render topic will read `stackedBarData`
-- If `chartType` is `gauge`, the render topic will read `value` and `segments`
 
 Example pie payload:
 
@@ -402,18 +403,21 @@ Example pie payload:
 
 Example line payload:
 
+Use the line chart only when the x-axis is truly ordered. If your source data uses labels such as Jan, Feb, and Mar, normalize them to ISO-like dates such as 2026-01-01, 2026-02-01, and 2026-03-01 before handing off to the render topic. If you want to keep plain month labels, a bar chart is often the better choice.
+
 ```json
 {
   "chartType": "line",
   "title": "Songs Released Over Time",
-  "xAxisTitle": "Month",
+  "xAxisTitle": "Date",
   "yAxisTitle": "Songs",
   "data": [
     {
       "legend": "Rock",
       "values": [
-        { "x": "2026-01", "y": 120 },
-        { "x": "2026-02", "y": 150 }
+        { "x": "2026-01-01", "y": 120 },
+        { "x": "2026-02-01", "y": 150 },
+        { "x": "2026-03-01", "y": 128 }
       ]
     }
   ]
@@ -640,25 +644,6 @@ In each chart branch, add a **Send a message** node, add an **Adaptive card**, s
 }
 ```
 
-#### Gauge branch
-
-```powerfx
-{
-    type: "AdaptiveCard",
-    version: "1.5",
-    body: [
-        {
-            type: "Chart.Gauge",
-            title: Text(Topic.ChartTitle),
-            showTitle: true,
-            value: Value(Topic.ChartPlan.value),
-            valueFormat: "fraction",
-            segments: Topic.ChartPlan.segments
-        }
-    ]
-}
-```
-
 ### 4.6 Node 6: Send a message node
 
 Add a **Send a message** node to the active chart branch and use it to return the chart.
@@ -683,7 +668,6 @@ Use these rules:
 - line for dates or ordered time periods
 - grouped vertical bar for multi-series comparison
 - stacked vertical bar for totals and composition across categories
-- gauge for one KPI or one percentage
 
 ### 5.2 Example normalization from a returned table
 
@@ -714,7 +698,7 @@ Instead, keep the topic formulas stable and make the orchestrator normalize the 
 - let the orchestrator decide which dataset should be charted
 - do top-N limiting and sorting in the data query or orchestrator layer
 - use line charts only when the x-axis is time ordered
-- keep gauge values on a 0 to 100 scale
+- if the source uses month names such as Jan, Feb, and Mar, normalize them to ISO-like dates such as 2026-01-01 before handing them to the line chart, or choose a bar chart instead
 - render one chart per topic invocation
 
 ### 5.5 Optional topic inputs, internal variables, and validation

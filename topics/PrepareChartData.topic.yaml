@@ -1,0 +1,139 @@
+kind: AdaptiveDialog
+description: Use this topic when a user asks for a chart or provides raw data to visualize. It normalizes the dataset into ChartPlanJSON for the Render Chart topic.
+
+inputType:
+  properties:
+    SelectedDatasetJSON:
+      displayName: Selected Dataset JSON
+      description: JSON string containing the selected dataset to normalize for chart rendering.
+      type:
+        kind: String
+
+outputType:
+  properties:
+    ChartPlanJSON:
+      displayName: Chart Plan JSON
+      description: JSON string containing the normalized chart plan for the Render Chart topic.
+      type:
+        kind: String
+
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Prepare Chart Data
+    triggerQueries:
+      - show me a chart
+      - visualize this data
+      - create a chart
+      - make a bar chart
+      - make a line chart
+      - make a stacked bar chart
+      - compare this in a chart
+      - prepare chart data
+
+  actions:
+    - kind: SetVariable
+      id: setChartPlanJSON
+      variable: Topic.ChartPlanJSON
+      value: |-
+        =With(
+            {
+                ds: ParseJSON(Topic.SelectedDatasetJSON),
+                chosenChartType: If(
+                    IsBlank(Text(ParseJSON(Topic.SelectedDatasetJSON).preferredChartType)),
+                    "horizontalBar",
+                    Text(ParseJSON(Topic.SelectedDatasetJSON).preferredChartType)
+                )
+            },
+            JSON(
+                {
+                    chartType: chosenChartType,
+                    title: If(
+                        IsBlank(Text(ds.title)),
+                        "Results",
+                        Text(ds.title)
+                    ),
+                    xAxisTitle: If(
+                        IsBlank(Text(ds.xAxisTitle)),
+                        "Category",
+                        Text(ds.xAxisTitle)
+                    ),
+                    yAxisTitle: If(
+                        IsBlank(Text(ds.yAxisTitle)),
+                        "Value",
+                        Text(ds.yAxisTitle)
+                    ),
+                    colorSet: If(
+                        IsBlank(Text(ds.colorSet)),
+                        "categorical",
+                        Text(ds.colorSet)
+                    ),
+                    value: Value(ds.value),
+                    normalizedRows: If(
+                        CountRows(ds.normalizedRows) > 0,
+                        ForAll(
+                            ds.normalizedRows,
+                            {
+                                category: Text(ThisRecord.category),
+                                series: Text(ThisRecord.series),
+                                value: Value(ThisRecord.value)
+                            }
+                        ),
+                        ForAll(
+                            ds.rows,
+                            {
+                                category: Text(ThisRecord.label),
+                                value: Value(ThisRecord.value)
+                            }
+                        )
+                    ),
+                    data: ForAll(
+                        ds.data As series,
+                        {
+                            legend: Text(series.legend),
+                            values: ForAll(
+                                series.values As point,
+                                {
+                                    x: Text(point.x),
+                                    y: Value(point.y)
+                                }
+                            )
+                        }
+                    ),
+                    stackedBarData: ForAll(
+                        ds.stackedBarData As bar,
+                        {
+                            title: Coalesce(Text(bar.title), Text(bar.category), Text(bar.label)),
+                            data: If(
+                                CountRows(bar.data) > 0,
+                                ForAll(
+                                    bar.data As segment,
+                                    {
+                                        legend: Coalesce(Text(segment.legend), Text(segment.label)),
+                                        value: Value(segment.value),
+                                        color: Text(segment.color)
+                                    }
+                                ),
+                                ForAll(
+                                    bar.segments As segment,
+                                    {
+                                        legend: Coalesce(Text(segment.legend), Text(segment.label)),
+                                        value: Value(segment.value),
+                                        color: Text(segment.color)
+                                    }
+                                )
+                            )
+                        }
+                    ),
+                    segments: ForAll(
+                        ds.segments As segment,
+                        {
+                            legend: Text(segment.legend),
+                            size: Value(segment.size),
+                            color: Text(segment.color)
+                        }
+                    )
+                }
+            )
+        )
