@@ -7,7 +7,8 @@ The included guide uses a music dataset as the example scenario, but the pattern
 ## Contents
 
 - [CopilotStudio-AdaptiveCharts-Guide.md](CopilotStudio-AdaptiveCharts-Guide.md) - step-by-step guide for the topic pattern
-- [Reference/OrchestratorAgentInstructions.md](Reference/OrchestratorAgentInstructions.md) - standalone instruction set for the parent or orchestrator agent
+- [topics/PrepareChartData.topic.yaml](topics/PrepareChartData.topic.yaml) - Copilot Studio YAML for the data-normalization topic
+- [topics/RenderChart.topic.yaml](topics/RenderChart.topic.yaml) - Copilot Studio YAML for the chart-rendering topic
 
 ## Goal
 
@@ -26,11 +27,29 @@ The guide demonstrates a two-topic pattern:
 
 This separation of concerns keeps data shaping separate from presentation and makes the approach easier to reuse.
 
+## Topic YAML
+
+The [topics](topics) folder contains the Copilot Studio code-editor import YAML for the two chart topics described in the guide.
+
+Included files:
+
+- [topics/PrepareChartData.topic.yaml](topics/PrepareChartData.topic.yaml)
+- [topics/RenderChart.topic.yaml](topics/RenderChart.topic.yaml)
+
+These files follow the AdaptiveDialog code-editor structure used by Copilot Studio, including:
+
+- `kind: AdaptiveDialog`
+- `beginDialog` or `OnRecognizedIntent`
+- `inputType` and `outputType`
+- `SetVariable`, `ConditionGroup`, `BeginDialog`, `SendActivity`, and `SendMessage` actions
+
+Use them by creating a blank topic in Copilot Studio, opening the code editor, and pasting the file contents.
+
+If cross-topic references do not bind cleanly after paste, reselect the target topic in the Copilot Studio canvas instead of assuming the imported redirect reference will remain valid across environments.
+
 ## Additive Chart Instructions
 
 Use this only as an add-on to existing agent instructions. It covers the minimum behavior needed to hand off chart requests to the two chart topics in this repo.
-
-You can also keep the fuller standalone version in [Reference/OrchestratorAgentInstructions.md](Reference/OrchestratorAgentInstructions.md).
 
 ```text
 When the user asks for a chart and the returned data can be normalized, call Prepare Chart Data first and then Render Chart. Do not call Render Chart directly from a raw user request unless you already have a fully normalized ChartPlanJSON object.
