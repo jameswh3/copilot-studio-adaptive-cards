@@ -84,6 +84,7 @@ beginDialog:
                             ds.rows,
                             {
                                 category: Text(ThisRecord.label),
+                                series: Text(ThisRecord.series),
                                 value: Value(ThisRecord.value)
                             }
                         )
@@ -104,7 +105,7 @@ beginDialog:
                             }
                         ),
                         If(
-                            chosenChartType = "line",
+                            Lower(chosenChartType) = "line" || Lower(chosenChartType) = "verticalbargrouped" || Lower(chosenChartType) = "verticalbarstacked",
                             With(
                                 {
                                     sourceRows: If(
