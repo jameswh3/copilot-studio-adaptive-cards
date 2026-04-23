@@ -88,18 +88,83 @@ beginDialog:
                             }
                         )
                     ),
-                    data: ForAll(
-                        ds.data As series,
-                        {
-                            legend: Text(series.legend),
-                            values: ForAll(
-                                series.values As point,
+                    data: If(
+                        CountRows(ds.data) > 0,
+                        ForAll(
+                            ds.data As series,
+                            {
+                                legend: Text(series.legend),
+                                values: ForAll(
+                                    series.values As point,
+                                    {
+                                        x: Text(point.x),
+                                        y: Value(point.y)
+                                    }
+                                )
+                            }
+                        ),
+                        If(
+                            chosenChartType = "line",
+                            With(
                                 {
-                                    x: Text(point.x),
-                                    y: Value(point.y)
-                                }
-                            )
-                        }
+                                    sourceRows: If(
+                                        CountRows(ds.normalizedRows) > 0,
+                                        ForAll(
+                                            ds.normalizedRows,
+                                            {
+                                                x: Text(ThisRecord.category),
+                                                seriesName: Text(ThisRecord.series),
+                                                y: Value(ThisRecord.value)
+                                            }
+                                        ),
+                                        ForAll(
+                                            ds.rows,
+                                            {
+                                                x: Text(ThisRecord.label),
+                                                seriesName: Text(ThisRecord.series),
+                                                y: Value(ThisRecord.value)
+                                            }
+                                        )
+                                    )
+                                },
+                                ForAll(
+                                    Distinct(
+                                        sourceRows,
+                                        If(
+                                            IsBlank(seriesName),
+                                            If(
+                                                IsBlank(Text(ds.yAxisTitle)),
+                                                "Series 1",
+                                                Text(ds.yAxisTitle)
+                                            ),
+                                            seriesName
+                                        )
+                                    ) As seriesGroup,
+                                    {
+                                        legend: Text(seriesGroup.Value),
+                                        values: ForAll(
+                                            Filter(
+                                                sourceRows,
+                                                If(
+                                                    IsBlank(seriesName),
+                                                    If(
+                                                        IsBlank(Text(ds.yAxisTitle)),
+                                                        "Series 1",
+                                                        Text(ds.yAxisTitle)
+                                                    ),
+                                                    seriesName
+                                                ) = Text(seriesGroup.Value)
+                                            ),
+                                            {
+                                                x: Text(ThisRecord.x),
+                                                y: Value(ThisRecord.y)
+                                            }
+                                        )
+                                    }
+                                )
+                            ),
+                            Blank()
+                        )
                     ),
                     stackedBarData: ForAll(
                         ds.stackedBarData As bar,

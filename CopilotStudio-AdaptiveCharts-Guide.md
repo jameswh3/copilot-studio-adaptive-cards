@@ -209,57 +209,188 @@ Configure the node as follows:
 Formula:
 
 ```powerfx
-JSON(
+With(
+  {
+    ds: ParseJSON(Topic.SelectedDatasetJSON),
+    chosenChartType: If(
+      IsBlank(Text(ParseJSON(Topic.SelectedDatasetJSON).preferredChartType)),
+      "horizontalBar",
+      Text(ParseJSON(Topic.SelectedDatasetJSON).preferredChartType)
+    )
+  },
+  JSON(
     {
-        chartType: If(
-            IsBlank(Text(Topic.SelectedDataset.preferredChartType)),
-            "horizontalBar",
-            Text(Topic.SelectedDataset.preferredChartType)
+      chartType: chosenChartType,
+      title: If(
+        IsBlank(Text(ds.title)),
+        "Results",
+        Text(ds.title)
+      ),
+      xAxisTitle: If(
+        IsBlank(Text(ds.xAxisTitle)),
+        "Category",
+        Text(ds.xAxisTitle)
+      ),
+      yAxisTitle: If(
+        IsBlank(Text(ds.yAxisTitle)),
+        "Value",
+        Text(ds.yAxisTitle)
+      ),
+      colorSet: If(
+        IsBlank(Text(ds.colorSet)),
+        "categorical",
+        Text(ds.colorSet)
+      ),
+      value: Value(ds.value),
+      normalizedRows: If(
+        CountRows(ds.normalizedRows) > 0,
+        ForAll(
+          ds.normalizedRows,
+          {
+            category: Text(ThisRecord.category),
+            series: Text(ThisRecord.series),
+            value: Value(ThisRecord.value)
+          }
         ),
-        title: If(
-            IsBlank(Text(Topic.SelectedDataset.title)),
-            "Results",
-            Text(Topic.SelectedDataset.title)
+        ForAll(
+          ds.rows,
+          {
+            category: Text(ThisRecord.label),
+            value: Value(ThisRecord.value),
+            series: Text(ThisRecord.series)
+          }
+        )
+      ),
+      data: If(
+        CountRows(ds.data) > 0,
+        ForAll(
+          ds.data As series,
+          {
+            legend: Text(series.legend),
+            values: ForAll(
+              series.values As point,
+              {
+                x: Text(point.x),
+                y: Value(point.y)
+              }
+            )
+          }
         ),
-        xAxisTitle: If(
-            IsBlank(Text(Topic.SelectedDataset.xAxisTitle)),
-            "Category",
-            Text(Topic.SelectedDataset.xAxisTitle)
-        ),
-        yAxisTitle: If(
-            IsBlank(Text(Topic.SelectedDataset.yAxisTitle)),
-            "Value",
-            Text(Topic.SelectedDataset.yAxisTitle)
-        ),
-        colorSet: "categorical",
-        normalizedRows: If(
-            CountRows(Topic.SelectedDataset.normalizedRows) > 0,
+        If(
+          chosenChartType = "line",
+          With(
+            {
+              sourceRows: If(
+                CountRows(ds.normalizedRows) > 0,
+                ForAll(
+                  ds.normalizedRows,
+                  {
+                    x: Text(ThisRecord.category),
+                    seriesName: Text(ThisRecord.series),
+                    y: Value(ThisRecord.value)
+                  }
+                ),
+                ForAll(
+                  ds.rows,
+                  {
+                    x: Text(ThisRecord.label),
+                    seriesName: Text(ThisRecord.series),
+                    y: Value(ThisRecord.value)
+                  }
+                )
+              )
+            },
             ForAll(
-                Topic.SelectedDataset.normalizedRows,
-                {
-                    category: Text(ThisRecord.category),
-                    value: Value(ThisRecord.value)
-                }
+              Distinct(
+                sourceRows,
+                If(
+                  IsBlank(seriesName),
+                  If(
+                    IsBlank(Text(ds.yAxisTitle)),
+                    "Series 1",
+                    Text(ds.yAxisTitle)
+                  ),
+                  seriesName
+                )
+              ) As seriesGroup,
+              {
+                legend: Text(seriesGroup.Value),
+                values: ForAll(
+                  Filter(
+                    sourceRows,
+                    If(
+                      IsBlank(seriesName),
+                      If(
+                        IsBlank(Text(ds.yAxisTitle)),
+                        "Series 1",
+                        Text(ds.yAxisTitle)
+                      ),
+                      seriesName
+                    ) = Text(seriesGroup.Value)
+                  ),
+                  {
+                    x: Text(ThisRecord.x),
+                    y: Value(ThisRecord.y)
+                  }
+                )
+              }
+            )
+          ),
+          Blank()
+        )
+      ),
+      stackedBarData: ForAll(
+        ds.stackedBarData As bar,
+        {
+          title: Coalesce(Text(bar.title), Text(bar.category), Text(bar.label)),
+          data: If(
+            CountRows(bar.data) > 0,
+            ForAll(
+              bar.data As segment,
+              {
+                legend: Coalesce(Text(segment.legend), Text(segment.label)),
+                value: Value(segment.value),
+                color: Text(segment.color)
+              }
             ),
             ForAll(
-                Topic.SelectedDataset.rows,
-                {
-                    category: Text(ThisRecord.label),
-                    value: Value(ThisRecord.value)
-                }
+              bar.segments As segment,
+              {
+                legend: Coalesce(Text(segment.legend), Text(segment.label)),
+                value: Value(segment.value),
+                color: Text(segment.color)
+              }
             )
-        )
+          )
+        }
+      ),
+      segments: ForAll(
+        ds.segments As segment,
+        {
+          legend: Text(segment.legend),
+          size: Value(segment.size),
+          color: Text(segment.color)
+        }
+      )
     }
+  )
 )
 ```
 
 Expected `SelectedDatasetJSON` schema:
+
 - `title`
 - `preferredChartType`
 - `xAxisTitle`
 - `yAxisTitle`
-- either `rows[]` with `label` and `value`
-- or `normalizedRows[]` with `category` and `value`
+- optional `colorSet`
+- optional `value` and `segments[]` for gauge-style payloads
+- either `rows[]` with `label`, `value`, and optional `series`
+- or `normalizedRows[]` with `category`, `value`, and optional `series`
+- or `data[]` with `legend` and `values[]` when the source already has explicit series data
+- or `stackedBarData[]` when the source already has explicit stacked-bar groups
+
+For line charts, row-based input is valid. If the source passes `rows[]` or `normalizedRows[]` instead of a prebuilt `data[]` array, `Prepare Chart Data` should group rows by `series` when present and synthesize the `data[]` structure that `Render Chart` expects.
 
 The resulting value stored in `Topic.ChartPlanJSON` is the normalized contract used by the Render Chart topic.
 

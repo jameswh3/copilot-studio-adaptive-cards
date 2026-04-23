@@ -79,13 +79,15 @@ Build SelectedDatasetJSON in this shape whenever possible:
 
 {
   "title": "...",
-  "preferredChartType": "horizontalBar",
+  "preferredChartType": "line",
   "xAxisTitle": "...",
   "yAxisTitle": "...",
   "rows": [
-    { "label": "...", "value": 123 }
+    { "label": "2026-01-01", "value": 123, "series": "Revenue" }
   ]
 }
+
+For line charts, row-based input is acceptable. Prepare Chart Data should convert `rows` or `normalizedRows` into the series-based `data` array that Render Chart expects.
 
 Render Chart expects ChartPlanJSON in these shapes:
 - horizontalBar or pie: normalizedRows with category and value
